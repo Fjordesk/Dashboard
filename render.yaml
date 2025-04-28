@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: liberty-nordic-dashboard
+    env: go
+    buildCommand: go mod tidy
+    startCommand: ./liberty-nordic-dashboard
+    envVars:
+      - key: PORT
+        value: 8080 
