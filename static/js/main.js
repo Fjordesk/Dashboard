@@ -4,6 +4,7 @@ let currentFileId = null;
 document.addEventListener('DOMContentLoaded', function() {
     loadDashboardStats();
     loadPendingTasks();
+    loadUpcomingGroups();
 });
 
 function loadDashboardStats() {
@@ -23,18 +24,17 @@ function loadPendingTasks() {
         .then(tasks => {
             const container = document.getElementById('pendingTasks');
             container.innerHTML = '';
-            
             tasks.forEach(task => {
                 const taskElement = document.createElement('div');
-                taskElement.className = 'mb-2 p-2 border rounded';
+                taskElement.className = 'mb-2 p-2 border rounded d-flex align-items-center';
+                const checked = task.Task.Status === 'completed' ? 'checked disabled' : '';
                 taskElement.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${task.FileNumber}</strong><br>
-                            ${task.Task.Description}
-                        </div>
-                        <small class="text-muted">Due: ${task.Task.DueDate}</small>
+                    <input type="checkbox" class="form-check-input me-2" ${checked} onchange="completePendingTask('${task.FileID}', '${task.Task.ID}', this)">
+                    <div class="flex-grow-1">
+                        <strong>${task.FileNumber}</strong><br>
+                        ${task.Task.Description}
                     </div>
+                    <small class="text-muted ms-2">Due: ${task.Task.DueDate}</small>
                 `;
                 container.appendChild(taskElement);
             });
@@ -46,9 +46,11 @@ function searchFiles() {
     fetch(`/api/search?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(files => {
+            // Sort files: Pending, Working, Completed, Canceled
+            const statusOrder = { pending: 1, working: 2, completed: 3, canceled: 4 };
+            files.sort((a, b) => (statusOrder[a.Status] || 99) - (statusOrder[b.Status] || 99));
             const tbody = document.getElementById('filesTable');
             tbody.innerHTML = '';
-            
             files.forEach(file => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -336,4 +338,40 @@ function generateUUID() {
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
+}
+
+window.completePendingTask = function(fileId, taskId, checkbox) {
+    if (checkbox.checked) {
+        fetch(`/api/file/${fileId}/task/${taskId}/complete`, { method: 'POST' })
+            .then(() => {
+                checkbox.disabled = true;
+                loadPendingTasks();
+            });
+    }
+};
+
+function loadUpcomingGroups() {
+    fetch('/api/files')
+        .then(response => response.json())
+        .then(files => {
+            const now = new Date();
+            const upcoming = files.filter(f => {
+                if (!f.Arrival) return false;
+                const arr = new Date(f.Arrival);
+                return arr > now;
+            });
+            upcoming.sort((a, b) => new Date(a.Arrival) - new Date(b.Arrival));
+            const container = document.getElementById('upcomingGroupsList');
+            container.innerHTML = '';
+            if (upcoming.length === 0) {
+                container.innerHTML = '<div class="text-muted">No upcoming groups.</div>';
+                return;
+            }
+            upcoming.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'mb-2 p-2 border rounded';
+                div.innerHTML = `<strong>${f.FileNumber}</strong> - ${f.Client} | <span class="text-muted">Arrival: ${f.Arrival}</span> | <span class="badge bg-${getStatusBadgeColor(f.Status)}">${f.Status}</span>`;
+                container.appendChild(div);
+            });
+        });
 } 

@@ -25,19 +25,6 @@
 
         <div class="row mb-4">
             <div class="col-md-3">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Completed Files</h5>
-                                <h2 class="card-text" id="completedCount">0</h2>
-                            </div>
-                            <i class="fas fa-clipboard-check fa-3x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
                 <div class="card bg-warning text-white">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -59,6 +46,19 @@
                                 <h2 class="card-text" id="workingCount">0</h2>
                             </div>
                             <i class="fas fa-cogs fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Completed Files</h5>
+                                <h2 class="card-text" id="completedCount">0</h2>
+                            </div>
+                            <i class="fas fa-clipboard-check fa-3x opacity-50"></i>
                         </div>
                     </div>
                 </div>
@@ -131,6 +131,21 @@
                     <div class="card-body">
                         <div id="pendingTasks">
                             <!-- Tasks will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i class="fas fa-calendar-alt me-2"></i>Upcoming Groups</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="upcomingGroupsList">
+                            <!-- Upcoming groups will be loaded here -->
                         </div>
                     </div>
                 </div>
@@ -256,5 +271,79 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
+    <script>
+    // --- Revenue Table Logic ---
+    function addRevenueRow(supplier = '', cost = '') {
+        const tbody = document.getElementById('revenueTableBody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control" value="${supplier}"></td>
+            <td><input type="number" class="form-control" value="${cost}" min="0" step="0.01" onchange="updateRevenueRow(this)"></td>
+            <td><input type="number" class="form-control" value="0" min="0" step="0.01" onchange="updateRevenueRow(this)"></td>
+            <td><input type="number" class="form-control" readonly></td>
+            <td><input type="number" class="form-control" readonly></td>
+            <td><input type="number" class="form-control" value="0" min="0" step="0.01" onchange="updateRevenueRow(this)"></td>
+            <td><input type="number" class="form-control" readonly></td>
+            <td><input type="text" class="form-control" readonly></td>
+            <td><input type="number" class="form-control" readonly></td>
+            <td><input type="number" class="form-control" readonly></td>
+            <td><button class="btn btn-danger" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    function updateRevenueRow(input) {
+        const row = input.closest('tr');
+        const cost = parseFloat(row.children[1].children[0].value) || 0;
+        const markup = parseFloat(row.children[2].children[0].value) || 0;
+        const commissionPct = parseFloat(row.children[5].children[0].value) || 0;
+
+        // D: Total Selling
+        const selling = cost + (cost * markup);
+        row.children[3].children[0].value = selling ? selling.toFixed(2) : '';
+
+        // E: Profit Margin Without Commission
+        row.children[4].children[0].value = selling === 0 ? '' : ((selling - cost) / selling).toFixed(2);
+
+        // I: Commission Amount
+        const commissionAmt = commissionPct === 0 ? 0 : cost * commissionPct;
+        row.children[8].children[0].value = commissionAmt.toFixed(2);
+
+        // J: Total Profit incl. Commission
+        row.children[9].children[0].value = commissionAmt.toFixed(2);
+
+        // G: Profit Margin Adj. for Commission
+        let profitMarginAdj = '';
+        if (selling !== 0) {
+            profitMarginAdj = commissionPct === 0
+                ? ((selling - cost) / selling)
+                : ((selling - cost + commissionAmt) / selling);
+            row.children[6].children[0].value = profitMarginAdj.toFixed(2);
+        } else {
+            row.children[6].children[0].value = '';
+        }
+
+        // Flag logic (example: OK if margin > 0.23)
+        row.children[7].children[0].value = (profitMarginAdj !== '' && profitMarginAdj < 0.23) ? 'Check' : 'OK';
+    }
+
+    // --- Planning Tab Logic ---
+    function addPlanningItem() {
+        const type = document.getElementById('planningType').value;
+        const supplier = document.getElementById('planningSupplier').value;
+        const cost = document.getElementById('planningCost').value;
+        if (!supplier || !cost) return;
+        // Add to planning list
+        const planningList = document.getElementById('planningList');
+        const div = document.createElement('div');
+        div.className = 'alert alert-secondary d-flex justify-content-between align-items-center';
+        div.innerHTML = `<span><strong>${type}</strong>: ${supplier} - $${cost}</span><button class="btn btn-sm btn-outline-success" onclick="addRevenueRow('${supplier}', '${cost}')"><i class="fas fa-arrow-right"></i> To Revenue</button>`;
+        planningList.appendChild(div);
+        // Auto-add to revenue
+        addRevenueRow(supplier, cost);
+        // Reset form
+        document.getElementById('planningForm').reset();
+    }
+    </script>
 </body>
 </html> 

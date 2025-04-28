@@ -21,19 +21,44 @@ type Task struct {
 	Status      string `json:"status"` // pending, completed
 }
 
+type PlanningModule struct {
+	ID       string                 `json:"id"`
+	Type     string                 `json:"type"`
+	Supplier string                 `json:"supplier"`
+	Cost     float64                `json:"cost"`
+	Details  map[string]interface{} `json:"details"` // for modular fields
+}
+
+type RevenueRow struct {
+	ID              string  `json:"id"`
+	Supplier        string  `json:"supplier"`
+	TotalCost       float64 `json:"totalCost"`
+	Markup          float64 `json:"markup"`
+	TotalSelling    float64 `json:"totalSelling"`
+	ProfitMargin    float64 `json:"profitMargin"`
+	CommissionPct   float64 `json:"commissionPct"`
+	ProfitMarginAdj float64 `json:"profitMarginAdj"`
+	Flag            string  `json:"flag"`
+	CommissionAmt   float64 `json:"commissionAmt"`
+	TotalProfit     float64 `json:"totalProfit"`
+}
+
 type File struct {
-	ID            string          `json:"id"`
-	FileNumber    string          `json:"fileNumber"`
-	CountryPrefix string          `json:"countryPrefix"`
-	Client        string          `json:"client"`
-	Arrival       string          `json:"arrival"`
-	Departure     string          `json:"departure"`
-	Nights        int             `json:"nights"`
-	Pax           int             `json:"pax"`
-	Destination   string          `json:"destination"`
-	Services      []ServiceDetail `json:"services"`
-	Status        string          `json:"status"` // completed, pending, working, canceled
-	Tasks         []Task          `json:"tasks"`
+	ID              string           `json:"id"`
+	FileNumber      string           `json:"fileNumber"`
+	CountryPrefix   string           `json:"countryPrefix"`
+	Client          string           `json:"client"`
+	Arrival         string           `json:"arrival"`
+	Departure       string           `json:"departure"`
+	Nights          int              `json:"nights"`
+	Pax             int              `json:"pax"`
+	Destination     string           `json:"destination"`
+	Services        []ServiceDetail  `json:"services"`
+	Status          string           `json:"status"`
+	Tasks           []Task           `json:"tasks"`
+	Currency        string           `json:"currency"`
+	PlanningModules []PlanningModule `json:"planningModules"`
+	RevenueRows     []RevenueRow     `json:"revenueRows"`
 }
 
 var files []File
@@ -52,6 +77,19 @@ func main() {
 	http.HandleFunc("/api/search", handleSearch)
 	http.HandleFunc("/api/dashboard/stats", handleDashboardStats)
 	http.HandleFunc("/api/pending-tasks", handlePendingTasks)
+	http.HandleFunc("/api/file/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/details") {
+			if r.Method == http.MethodGet {
+				handleFileDetails(w, r)
+			} else if r.Method == http.MethodPost {
+				handleSaveFileDetails(w, r)
+			} else {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+			return
+		}
+		http.NotFound(w, r)
+	})
 
 	// Start server
 	fmt.Println("Server starting on port 8080...")
@@ -203,4 +241,40 @@ func handlePendingTasks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(pendingTasks)
+}
+
+// API to get all file data (including planning and revenue)
+func handleFileDetails(w http.ResponseWriter, r *http.Request) {
+	fileID := r.URL.Path[len("/api/file/") : len(r.URL.Path)-len("/details")]
+	for _, f := range files {
+		if f.ID == fileID {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(f)
+			return
+		}
+	}
+	http.Error(w, "File not found", http.StatusNotFound)
+}
+
+// API to save all file data (including planning and revenue)
+func handleSaveFileDetails(w http.ResponseWriter, r *http.Request) {
+	fileID := r.URL.Path[len("/api/file/") : len(r.URL.Path)-len("/details")]
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var updatedFile File
+	if err := json.NewDecoder(r.Body).Decode(&updatedFile); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for i, f := range files {
+		if f.ID == fileID {
+			files[i] = updatedFile
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(updatedFile)
+			return
+		}
+	}
+	http.Error(w, "File not found", http.StatusNotFound)
 }
