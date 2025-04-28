@@ -2,7 +2,7 @@ services:
   - type: web
     name: liberty-nordic-dashboard
     env: go
-    buildCommand: go mod tidy
+    buildCommand: go mod tidy && go build -o liberty-nordic-dashboard
     startCommand: ./liberty-nordic-dashboard
     envVars:
       - key: PORT
