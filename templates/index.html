@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liberty Nordic Operations Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h1><i class="fas fa-chart-line me-2"></i>Liberty Nordic Operations Dashboard</h1>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search by file number...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="searchFiles()">Search</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Completed Files</h5>
+                                <h2 class="card-text" id="completedCount">0</h2>
+                            </div>
+                            <i class="fas fa-clipboard-check fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title"><i class="fas fa-clock me-2"></i>Pending Files</h5>
+                                <h2 class="card-text" id="pendingCount">0</h2>
+                            </div>
+                            <i class="fas fa-hourglass-half fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title"><i class="fas fa-tasks me-2"></i>Working Files</h5>
+                                <h2 class="card-text" id="workingCount">0</h2>
+                            </div>
+                            <i class="fas fa-cogs fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title"><i class="fas fa-times-circle me-2"></i>Canceled Files</h5>
+                                <h2 class="card-text" id="canceledCount">0</h2>
+                            </div>
+                            <i class="fas fa-ban fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i class="fas fa-folder-open me-2"></i>Files</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary mb-4" onclick="openCreateFileModal()">
+                            <i class="fas fa-plus-circle me-2"></i>Create New File
+                        </button>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-hashtag me-2"></i>File Number</th>
+                                        <th><i class="fas fa-user me-2"></i>Client</th>
+                                        <th><i class="fas fa-map-marker-alt me-2"></i>Destination</th>
+                                        <th><i class="fas fa-info-circle me-2"></i>Status</th>
+                                        <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="filesTable">
+                                    {{range .}}
+                                    <tr>
+                                        <td>{{.FileNumber}}</td>
+                                        <td>{{.Client}}</td>
+                                        <td>{{.Destination}}</td>
+                                        <td>
+                                            <span class="badge bg-{{if eq .Status "completed"}}success{{else if eq .Status "pending"}}warning{{else if eq .Status "working"}}info{{else}}danger{{end}}">
+                                                {{if eq .Status "completed"}}<i class="fas fa-check-circle me-1"></i>{{else if eq .Status "pending"}}<i class="fas fa-clock me-1"></i>{{else if eq .Status "working"}}<i class="fas fa-tasks me-1"></i>{{else}}<i class="fas fa-times-circle me-1"></i>{{end}}
+                                                {{.Status}}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="/file/{{.ID}}" class="btn btn-sm btn-info"><i class="fas fa-eye me-1"></i>View</a>
+                                            <button class="btn btn-sm btn-warning" onclick="editFile('{{.ID}}')"><i class="fas fa-edit me-1"></i>Edit</button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0"><i class="fas fa-list-check me-2"></i>Pending Tasks</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="pendingTasks">
+                            <!-- Tasks will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit File Modal -->
+    <div class="modal fade" id="fileModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>File Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="fileForm">
+                        <input type="hidden" id="fileId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="fileNumber" class="form-label"><i class="fas fa-hashtag me-2"></i>File Number</label>
+                                <input type="text" class="form-control" id="fileNumber" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="destination" class="form-label"><i class="fas fa-map-marker-alt me-2"></i>Destination</label>
+                                <select class="form-select" id="destination" required>
+                                    <option value="SE">Sweden</option>
+                                    <option value="NO">Norway</option>
+                                    <option value="DK">Denmark</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="client" class="form-label"><i class="fas fa-user me-2"></i>Client</label>
+                                <input type="text" class="form-control" id="client" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label"><i class="fas fa-info-circle me-2"></i>Status</label>
+                                <select class="form-select" id="status" required>
+                                    <option value="pending">Pending</option>
+                                    <option value="working">Working</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="canceled">Canceled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="pax" class="form-label"><i class="fas fa-users me-2"></i>Number of Pax</label>
+                                <input type="number" class="form-control" id="pax" required min="1">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="arrival" class="form-label"><i class="fas fa-plane-arrival me-2"></i>Arrival Date</label>
+                                <input type="date" class="form-control" id="arrival" required onchange="calculateNights()">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="departure" class="form-label"><i class="fas fa-plane-departure me-2"></i>Departure Date</label>
+                                <input type="date" class="form-control" id="departure" required onchange="calculateNights()">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nights" class="form-label"><i class="fas fa-moon me-2"></i>Number of Nights</label>
+                                <input type="number" class="form-control" id="nights" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fas fa-concierge-bell me-2"></i>Services</label>
+                            <div id="servicesContainer">
+                                <div class="row mb-2 service-row">
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control" placeholder="Service Type (e.g., Hotel)" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control" placeholder="Remarks (e.g., 3 nights, 4-star)">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger" onclick="removeService(this)"><i class="fas fa-minus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary mt-2" onclick="addService()">
+                                <i class="fas fa-plus-circle me-2"></i>Add Service
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fas fa-tasks me-2"></i>Tasks</label>
+                            <div id="tasksContainer">
+                                <div class="row mb-2 task-row">
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control" placeholder="Task Description" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select">
+                                            <option value="pending">Pending</option>
+                                            <option value="completed">Completed</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger" onclick="removeTask(this)"><i class="fas fa-minus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary mt-2" onclick="addTask()">
+                                <i class="fas fa-plus-circle me-2"></i>Add Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveFile()">
+                        <i class="fas fa-save me-2"></i>Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html> 
